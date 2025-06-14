@@ -53,8 +53,8 @@ def preprocess_data(file_path, dict_path, stopwords_path):
             stopwords = set([line.strip() for line in f if line.strip()])
 
     # 添加旅行专用停用词
-    travel_stopwords = {'日记', '实录', '血泪史', '作死', '小姑奶奶', '女娃子', '拍照', '觉得', '看到', '时候', '什么',
-                        '一个', '突然', '结果', '看到', '觉得', '时候', '什么', '一个', '突然', '结果', '活像', '仿佛'}
+    travel_stopwords = {'日记', '实录', '血泪史', '作死', '小姑奶奶', '女娃子', '拍照', '看到', '时候',
+                        '什么', '一个', '觉得', '时候', '什么', '一个', '突然', '结果', '活像', '仿佛'}
     all_stopwords = stopwords.union(travel_stopwords)
 
     # 读取数据
@@ -323,8 +323,8 @@ def main():
                 stopwords = set([line.strip() for line in f if line.strip()])
 
         # 添加旅行专用停用词
-        travel_stopwords = {'日记', '实录', '血泪史', '作死', '小姑奶奶', '女娃子', '拍照', '觉得', '看到', '时候',
-                            '什么', '一个', '突然', '结果', '看到', '觉得', '时候', '什么', '一个', '突然', '结果'}
+        travel_stopwords = {'日记', '实录', '血泪史', '作死', '小姑奶奶', '女娃子', '拍照',  '看到', '时候',
+                            '什么', '一个', '觉得', '时候', '什么', '一个', '突然', '结果', '活像','仿佛'}
         all_stopwords = stopwords.union(travel_stopwords)
 
         # 构建词典和语料库
