@@ -45,31 +45,23 @@ def preprocess_data(file_path, dict_path, stopwords_path):
     if os.path.exists(dict_path):
         jieba.load_userdict(dict_path)
         logger.info(f"已加载自定义词典: {dict_path}")
-
     # 加载停用词
     stopwords = set()
     if os.path.exists(stopwords_path):
         with open(stopwords_path, 'r', encoding='utf-8') as f:
             stopwords = set([line.strip() for line in f if line.strip()])
-
     # 添加旅行专用停用词
     travel_stopwords = {'日记', '实录', '血泪史', '作死', '小姑奶奶', '女娃子', '拍照', '觉得', '看到', '时候', '什么',
                         '一个', '突然', '结果', '看到'}
     all_stopwords = stopwords.union(travel_stopwords)
-
     # 读取数据
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"数据文件不存在: {file_path}")
-
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    # 更健壮的分割方式 - 匹配多种分隔符格式
     diaries = re.split(r'(?:\n-{3,}\s*\n)|(?:\n-{3,}\n)', content)
     diaries = [d.strip() for d in diaries if d.strip()]
-
-    logger.info(f"找到 {len(diaries)} 个日记片段")
-
     diary_titles = []
     diary_texts = []
 
@@ -118,22 +110,18 @@ def build_corpus(diary_texts, stopwords):
         # 清洗文本
         cleaned = re.sub(r'\d{4}[-./]\d{1,2}[-./]\d{1,2}', '', text)
         cleaned = re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9\s,。!?:;、]', ' ', cleaned)
-        # 分词
         words = jieba.lcut(cleaned)
         # 过滤停用词和短词
         filtered = [word for word in words if word not in stopwords and len(word) > 1]
         tokenized_diaries.append(filtered)
-
     # 创建词典，调整过滤参数
     dictionary = corpora.Dictionary(tokenized_diaries)
-
     # 更严格的过滤策略
     dictionary.filter_extremes(
         no_below=2,  # 至少出现在2篇文档中
         no_above=0.6,  # 最多出现在60%文档中
         keep_n=1000  # 保留最多1000个词
     )
-
     # 如果词典为空，使用未过滤的词典
     if len(dictionary) == 0:
         logger.warning("过滤后词典为空，使用未过滤词典")
@@ -174,12 +162,10 @@ def train_lda_model(corpus, dictionary, num_topics=4, passes=20):
         iterations=400,  # 增加迭代次数
         minimum_probability=0.01  # 设置最小概率阈值
     )
-
     # 收集主题
     topics = []
     for i, topic in lda.print_topics(num_topics=num_topics, num_words=10):
         topics.append(f"主题 {i + 1}: {topic}")
-
     return lda, topics
 
 
@@ -208,10 +194,8 @@ def visualize_topics(topic_vectors, titles, method='UMAP', filename='topic_umap.
     if len(topic_vectors) == 0:
         logger.warning("无法可视化，主题向量为空")
         return None
-
     # 确保有足够的文档进行可视化
     n_neighbors = min(5, len(topic_vectors) - 1) if len(topic_vectors) > 1 else 1
-
     if method == 'UMAP':
         reducer = umap.UMAP(n_components=2, random_state=42, n_neighbors=n_neighbors, min_dist=0.3)
         embedding = reducer.fit_transform(topic_vectors)
@@ -229,7 +213,6 @@ def visualize_topics(topic_vectors, titles, method='UMAP', filename='topic_umap.
         plt.annotate(short_title,
                      (embedding[i, 0], embedding[i, 1]),
                      fontsize=10, ha='center', va='bottom')
-
     plt.title('旅行日记主题分布可视化', fontsize=16)
     plt.xlabel(f'{method}维度1', fontsize=12)
     plt.ylabel(f'{method}维度2', fontsize=12)
@@ -276,10 +259,8 @@ def build_recommendation_system(topic_vectors, diary_titles):
     if len(topic_vectors) < 2:
         logger.warning("文档数量不足，无法构建推荐系统")
         return None
-
     # 计算相似度矩阵
     similarity_matrix = cosine_similarity(topic_vectors)
-
     # 推荐函数
     def recommend(diary_idx, k=3):
         # 获取当前日记的相似度排序
@@ -290,7 +271,6 @@ def build_recommendation_system(topic_vectors, diary_titles):
         # 返回推荐结果
         recommendations = [(diary_titles[idx], score) for idx, score in sim_scores]
         return recommendations
-
     return recommend
 
 
@@ -354,7 +334,6 @@ def main():
         # 构建推荐系统
         if lda_topic_vectors is not None and len(lda_topic_vectors) > 1:
             recommend = build_recommendation_system(lda_topic_vectors, diary_titles)
-
             if recommend:
                 logger.info("推荐系统示例:")
                 # 创建标题映射
@@ -362,13 +341,11 @@ def main():
                     "杭州西湖", "西安城墙", "敦煌沙漠", "大理洱海", "黄山作死",
                     "哈尔滨", "鼓浪屿", "拉萨", "婺源", "草原蚊子"
                 ]
-
                 # 只使用实际存在的标题
                 valid_titles = []
                 for title in example_titles:
                     if any(title in t for t in diary_titles):
                         valid_titles.append(title)
-
                 # 对存在的标题进行推荐
                 for title in valid_titles:
                     # 查找包含关键词的标题索引
@@ -407,3 +384,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
