@@ -53,8 +53,8 @@ def preprocess_data(file_path, dict_path, stopwords_path):
             stopwords = set([line.strip() for line in f if line.strip()])
 
     # 添加旅行专用停用词
-    travel_stopwords = {'日记', '实录', '血泪史', '作死', '小姑奶奶', '女娃子', '拍照', '看到', '时候',
-                        '什么', '一个', '觉得', '时候', '什么', '一个', '突然', '结果', '活像', '仿佛'}
+    travel_stopwords = {'日记', '实录', '血泪史', '作死', '小姑奶奶', '女娃子', '拍照', '觉得', '看到', '时候', '什么',
+                        '一个', '突然', '结果', '看到'}
     all_stopwords = stopwords.union(travel_stopwords)
 
     # 读取数据
@@ -107,7 +107,6 @@ def preprocess_data(file_path, dict_path, stopwords_path):
         diary_texts.append(diary_content)
 
     logger.info(f"预处理完成，共处理 {len(diary_titles)} 篇旅行日记")
-    logger.info(f"前5个标题示例: {diary_titles[:5]}")
     return diary_titles, diary_texts
 
 
@@ -141,7 +140,6 @@ def build_corpus(diary_texts, stopwords):
         dictionary = corpora.Dictionary(tokenized_diaries)
 
     corpus = [dictionary.doc2bow(text) for text in tokenized_diaries]
-    logger.info(f"词典构建完成，包含 {len(dictionary)} 个词")
     return dictionary, corpus, tokenized_diaries
 
 
@@ -154,13 +152,10 @@ def train_lsa_model(corpus, dictionary, num_topics=4):
     # 训练LSA模型
     lsa = models.LsiModel(tfidf_corpus, id2word=dictionary, num_topics=num_topics)
 
-    # 打印主题
-    logger.info("LSA主题分析结果:")
+    # 收集主题
     topics = []
     for i, topic in lsa.print_topics(num_topics=num_topics, num_words=10):
-        topic_str = f"主题 {i + 1}: {topic}"
-        logger.info(topic_str)
-        topics.append(topic_str)
+        topics.append(f"主题 {i + 1}: {topic}")
 
     return lsa, tfidf_corpus, topics
 
@@ -180,13 +175,10 @@ def train_lda_model(corpus, dictionary, num_topics=4, passes=20):
         minimum_probability=0.01  # 设置最小概率阈值
     )
 
-    # 打印主题
-    logger.info("LDA主题分析结果:")
+    # 收集主题
     topics = []
     for i, topic in lda.print_topics(num_topics=num_topics, num_words=10):
-        topic_str = f"主题 {i + 1}: {topic}"
-        logger.info(topic_str)
-        topics.append(topic_str)
+        topics.append(f"主题 {i + 1}: {topic}")
 
     return lda, topics
 
@@ -323,8 +315,8 @@ def main():
                 stopwords = set([line.strip() for line in f if line.strip()])
 
         # 添加旅行专用停用词
-        travel_stopwords = {'日记', '实录', '血泪史', '作死', '小姑奶奶', '女娃子', '拍照',  '看到', '时候',
-                            '什么', '一个', '觉得', '时候', '什么', '一个', '突然', '结果', '活像','仿佛'}
+        travel_stopwords = {'日记', '实录', '血泪史', '作死', '小姑奶奶', '女娃子', '拍照', '觉得', '看到', '时候',
+                            '什么', '一个', '突然', '结果'}
         all_stopwords = stopwords.union(travel_stopwords)
 
         # 构建词典和语料库
@@ -364,7 +356,7 @@ def main():
             recommend = build_recommendation_system(lda_topic_vectors, diary_titles)
 
             if recommend:
-                logger.info("推荐示例:")
+                logger.info("推荐系统示例:")
                 # 创建标题映射
                 example_titles = [
                     "杭州西湖", "西安城墙", "敦煌沙漠", "大理洱海", "黄山作死",
@@ -376,8 +368,6 @@ def main():
                 for title in example_titles:
                     if any(title in t for t in diary_titles):
                         valid_titles.append(title)
-                    else:
-                        logger.warning(f"未找到包含 '{title}' 的日记")
 
                 # 对存在的标题进行推荐
                 for title in valid_titles:
@@ -390,8 +380,6 @@ def main():
                         recommendations = recommend(idx, k=k)
                         for rec_title, score in recommendations:
                             logger.info(f"- 《{rec_title}》, 相似度: {score:.4f}")
-                    else:
-                        logger.warning(f"未找到日记: {title}")
 
         # 保存主题模型
         if lsa_model:
