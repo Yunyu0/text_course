@@ -2,7 +2,7 @@
 # 文本信息挖掘课程设计：基于主题模型的网络新词演化分析
 # 班级：XX班 | 学号：XXXXXX | 姓名：XXX
 # 日期：2023年6月
-
+import matplotlib.font_manager as fm
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,12 +24,38 @@ os.environ['CURL_CA_BUNDLE'] = ''
 warnings.filterwarnings('ignore')
 
 # 设置中文显示
-plt.rcParams['font.sans-serif'] = ['SimHei']  # 使用黑体
-plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
-sns.set_style("whitegrid")
+# 设置中文字体支持
+plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'WenQuanYi Micro Hei']
+plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams['figure.facecolor'] = 'white'
 
 # 创建输出目录
 os.makedirs("output", exist_ok=True)
+def find_chinese_font():
+    """查找系统中可用的中文字体"""
+    # 常见中文字体名称
+    chinese_fonts = [
+        'SimHei', 'Microsoft YaHei', 'KaiTi', 'SimSun',
+        'FangSong', 'STSong', 'STKaiti', 'STFangsong',
+        'WenQuanYi Micro Hei', 'Source Han Sans SC',
+        'Noto Sans CJK SC', 'WenQuanYi Zen Hei'
+    ]
+
+    # 获取系统所有字体
+    system_fonts = fm.findSystemFonts()
+    for font_name in chinese_fonts:
+        for font_path in system_fonts:
+            if font_name.lower() in os.path.basename(font_path).lower():
+                return font_path
+
+    # 备选方案：查找包含"黑体"、"宋体"等关键字的字体
+    keywords = ['hei', 'song', 'kai', 'fang', 'st', 'cjk', 'sc', 'chinese', '中文']
+    for font_path in system_fonts:
+        font_name = os.path.basename(font_path).lower()
+        if any(kw in font_name for kw in keywords):
+            return font_path
+    return None  # 未找到中文字体
+
 
 # ======================
 # 1. 数据准备与预处理
@@ -220,61 +246,130 @@ def analyze_topic_locally(keywords):
 
 
 def generate_concept_image(keyword, filename):
-    """本地生成概念图像"""
-    # 颜色主题
+    """本地生成概念图像 - 无emoji版本"""
+    # 更丰富的颜色主题
     themes = {
-        "社会": ("#e74c3c", "#c0392b"),
-        "娱乐": ("#3498db", "#2980b9"),
-        "政治": ("#9b59b6", "#8e44ad"),
-        "科技": ("#2ecc71", "#27ae60"),
-        "生活": ("#f39c12", "#d35400"),
-        "心理": ("#1abc9c", "#16a085"),
-        "态度": ("#e67e22", "#d35400"),
-        "网络": ("#34495e", "#2c3e50"),
-        "时尚": ("#e84393", "#d63031"),
-        "教育": ("#0984e3", "#6c5ce7"),
-        "体育": ("#00cec9", "#00b894")
+        "社会": (["#ff9a9e", "#fad0c4"], "#d63031"),  # 柔和的粉色渐变
+        "娱乐": (["#a1c4fd", "#c2e9fb"], "#0984e3"),  # 蓝色渐变
+        "政治": (["#fbc2eb", "#a6c1ee"], "#6c5ce7"),  # 紫色渐变
+        "科技": (["#d4fc79", "#96e6a1"], "#00b894"),  # 绿色渐变
+        "生活": (["#f6d365", "#fda085"], "#e17055"),  # 橙色渐变
+        "心理": (["#84fab0", "#8fd3f4"], "#00cec9"),  # 青蓝色渐变
+        "态度": (["#ffecd2", "#fcb69f"], "#e84393"),  # 粉色渐变
+        "网络": (["#cd9cf2", "#f6f3ff"], "#2d3436"),  # 紫色渐变
+        "时尚": (["#ff9a9e", "#fecfef"], "#e84393"),  # 粉紫色渐变
+        "教育": (["#a1c4fd", "#d4fc79"], "#6c5ce7"),  # 蓝绿色渐变
+        "体育": (["#4facfe", "#00f2fe"], "#00b894")  # 蓝色渐变
     }
 
-    # 获取关键词类别
-    category = df[df['keyword'] == keyword]['category'].values[0]
-    bg_color, text_color = themes.get(category, ("#2c3e50", "#ecf0f1"))
+    # 获取关键词信息
+    row = df[df['keyword'] == keyword].iloc[0]
+    category = row['category']
+    sentiment = row['sentiment']
+    frequency = row['frequency']
+    year = row['year'].year
 
-    # 创建图像
-    img = Image.new('RGB', (600, 400), color=bg_color)
+    # 获取颜色主题
+    bg_colors, text_color = themes.get(category, (["#74ebd5", "#ACB6E5"], "#2c3e50"))
+
+    # 创建图像 - 更大尺寸
+    img = Image.new('RGB', (800, 500), color=bg_colors[0])
     d = ImageDraw.Draw(img)
 
-    # 添加标题
+    # 创建渐变背景
+    for i in range(img.height):
+        # 计算当前行的颜色
+        ratio = i / img.height
+        r1, g1, b1 = [int(bg_colors[0][j:j + 2], 16) for j in (1, 3, 5)]
+        r2, g2, b2 = [int(bg_colors[1][j:j + 2], 16) for j in (1, 3, 5)]
+
+        r = int(r1 + (r2 - r1) * ratio)
+        g = int(g1 + (g2 - g1) * ratio)
+        b = int(b1 + (b2 - b1) * ratio)
+
+        d.line([(0, i), (img.width, i)], fill=(r, g, b))
+
+    # 添加装饰性圆形
+    for _ in range(15):
+        x, y = random.randint(0, img.width), random.randint(0, img.height)
+        r = random.randint(20, 100)
+        alpha = random.randint(20, 60)
+
+        # 提取文本颜色的RGB值
+        hex_color = text_color.lstrip('#')
+        r_val = int(hex_color[0:2], 16)
+        g_val = int(hex_color[2:4], 16)
+        b_val = int(hex_color[4:6], 16)
+
+        # 创建半透明圆形
+        circle_img = Image.new('RGBA', (r * 2, r * 2), (0, 0, 0, 0))
+        circle_draw = ImageDraw.Draw(circle_img)
+        circle_draw.ellipse((0, 0, r * 2, r * 2), fill=(r_val, g_val, b_val, alpha))
+        img.paste(circle_img, (x - r, y - r), circle_img)
+
+    # 添加半透明矩形作为文字背景
+    # 提取文本颜色的RGB值
+    hex_color = text_color.lstrip('#')
+    r_val = int(hex_color[0:2], 16)
+    g_val = int(hex_color[2:4], 16)
+    b_val = int(hex_color[4:6], 16)
+
+    text_bg = Image.new('RGBA', (700, 300), (r_val, g_val, b_val, 30))
+    img.paste(text_bg, (50, 100), text_bg)
+
+    # 添加装饰边框
+    d.rectangle([40, 90, img.width - 40, img.height - 10], outline=text_color, width=3)
+
     try:
-        font_large = ImageFont.truetype("simhei.ttf", 40)
-        font_small = ImageFont.truetype("simhei.ttf", 24)
+        # 尝试加载不同大小的字体
+        font_title = ImageFont.truetype("simhei.ttf", 60)
+        font_category = ImageFont.truetype("simhei.ttf", 36)
+        font_details = ImageFont.truetype("simhei.ttf", 28)
+        font_sentiment = ImageFont.truetype("simhei.ttf", 32)  # 新增情感描述字体
     except:
-        font_large = ImageFont.load_default()
-        font_small = ImageFont.load_default()
+        # 回退到默认字体
+        font_title = ImageFont.load_default()
+        font_category = ImageFont.load_default()
+        font_details = ImageFont.load_default()
+        font_sentiment = ImageFont.load_default()
 
-    d.text((50, 50), f"概念图: {keyword}", font=font_large, fill=text_color)
+    # 添加标题
+    d.text((img.width // 2, 140), keyword, font=font_title, fill=text_color, anchor="mm")
 
-    # 添加描述
-    descriptions = [
-        f"类别: {category}",
-        f"情感值: {df[df['keyword'] == keyword]['sentiment'].values[0]:.2f}",
-        f"出现频率: {df[df['keyword'] == keyword]['frequency'].values[0]}",
-        f"年份: {df[df['keyword'] == keyword]['year'].dt.year.values[0]}"
+    # 添加类别标签
+    d.rectangle([img.width // 2 - 110, 190, img.width // 2 + 110, 260], fill="white")
+    d.text((img.width // 2, 225), f"类别: {category}", font=font_category, fill=text_color, anchor="mm")
+
+    # 添加详细信息
+    details_y = 280
+    details = [
+        f"情感值: {sentiment:.2f}",
+        f"出现频率: {frequency}次",
+        f"年份: {year}年"
     ]
 
-    for i, desc in enumerate(descriptions):
-        d.text((80, 150 + i * 50), desc, font=font_small, fill=text_color)
+    for i, detail in enumerate(details):
+        d.text((img.width // 2, details_y + i * 50), detail, font=font_details, fill=text_color, anchor="mm")
 
-    # 添加装饰元素
-    for _ in range(10):
-        x, y = random.randint(0, 550), random.randint(0, 350)
-        r = random.randint(5, 20)
-        d.ellipse([x, y, x + r, y + r], fill=text_color)
+    sentiment_desc = ""
+    sentiment_color = text_color
+
+    if sentiment > 0.3:
+        sentiment_desc = "正面情感"
+        sentiment_color = "#27ae60"  # 绿色表示正面
+    elif sentiment < -0.3:
+        sentiment_desc = "负面情感"
+        sentiment_color = "#e74c3c"  # 红色表示负面
+    else:
+        sentiment_desc = "中性情感"
+        sentiment_color = "#f39c12"  # 黄色表示中性
+
+    # 添加情感标签
+    d.rectangle([img.width // 2 - 100, 390, img.width // 2 + 100, 440], fill=sentiment_color)
+    d.text((img.width // 2, 415), sentiment_desc, font=font_sentiment, fill="white", anchor="mm")
 
     img.save(filename)
     return filename
-
-
 # 使用本地方法分析职场主题 - 移除了"996"
 workplace_keywords = ["内卷", "躺平", "00后整顿职场"]
 workplace_analysis = analyze_topic_locally(workplace_keywords)
